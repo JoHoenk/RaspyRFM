@@ -624,7 +624,7 @@ class PCPIR(TristateBase): #pilota casa PIR sensor
 
 class REVRitterShutter(RcPulse):
 	'''
-	Pulse Width Modulation 24 bit, 
+	Pulse Width Modulation 24 bit,
 	Short pulse: 0, long pulse: 1
 	Used by REV Ritter shutter contact SA-MC08-N04-D
 	'''
@@ -934,6 +934,8 @@ class RfmPulseTRX(threading.Thread):
 		while True:
 			fifo = self.__rfm.read_fifo_wait(64)
 			if len(fifo) == 0:
+				# Small sleep as fallback if no data received
+				time.sleep(0.001)
 				return
 
 			for b in fifo:
