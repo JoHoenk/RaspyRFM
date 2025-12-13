@@ -6,12 +6,13 @@ import rcprotocols
 import json
 from argparse import ArgumentParser
 import apiserver, time, os, shutil
+import sys
 
 MQTT_BASE_TOPIC = "home/rcpulse"
 
 try:
     import paho.mqtt.client as mqtt
-    mqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    mqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
 except:
 	mqttClient = None
 	print("mqtt init error")
@@ -65,10 +66,12 @@ def apicb(data):
 p = config["apiport"] if "apiport" in config else 1989
 apisrv = apiserver.ApiServer(p, apicb)
 
-def on_connect(client, userdata, flags, rc, props):
+def on_connect(client, userdata, flags, rc):
 	print("Connected MQTT with result code "+str(rc))
+	sys.stdout.flush()
 	if rc == 0:
 		client.subscribe(MQTT_BASE_TOPIC + "/#")
+		sys.stdout.flush()
 
 def on_disconnect(client, userdata, flags, rc, props):
 	print("MQTT disconnected")
@@ -81,25 +84,31 @@ def on_message(client, userdata, msg):
 	proto = tl[0]
 	tl = tl[1:-1] + [msg.payload.decode()]
 	print("TX from MQTT: " + proto + " " + str(tl))
-	rctrx.send(proto, tl)
+	sys.stdout.flush()
+	try:
+		rctrx.send(proto, tl)
+	except Exception as e:
+		print(f"Error sending {proto}: {e}")
+		sys.stdout.flush()
 
 
 if mqttClient:
-	mqttClient.connected_flag = False
 	mqttClient.loop_start()
 	mqttClient.on_connect = on_connect
 	mqttClient.on_disconnect = on_disconnect
 	mqttClient.on_message = on_message
-	mqttClient.username_pw_set(
-		config["mqtt"]["user"] if ("mqtt" in config) and ("user" in config["mqtt"]) else "",
-		config["mqtt"]["pass"] if ("mqtt" in config) and ("pass" in config["mqtt"]) else None,
-	)
+	user = config["mqtt"]["user"] if ("mqtt" in config) and ("user" in config["mqtt"]) else ""
+	passwd = config["mqtt"]["pass"] if ("mqtt" in config) and ("pass" in config["mqtt"]) else None
+	mqttClient.username_pw_set(user, passwd)
 	server = config["mqtt"]["server"] if ("mqtt" in config) and ("server" in config["mqtt"]) else "127.0.0.1"
 	port = config["mqtt"]["port"] if ("mqtt" in config) and ("port" in config["mqtt"]) else 1883
+	print("MQTT connecting to", server, ":", port, "user=", user, "pass=", passwd)
+	sys.stdout.flush()
 	try:
 		mqttClient.connect(server, port, 30)
-	except:
-		pass
+	except Exception as e:
+		print("MQTT connect error:", e)
+		sys.stdout.flush()
 
 while True:
 	time.sleep(1)
