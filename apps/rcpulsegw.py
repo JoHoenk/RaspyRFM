@@ -12,7 +12,7 @@ MQTT_BASE_TOPIC = "home/rcpulse"
 
 try:
     import paho.mqtt.client as mqtt
-    mqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
+    mqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 except:
 	mqttClient = None
 	print("mqtt init error")
@@ -66,14 +66,14 @@ def apicb(data):
 p = config["apiport"] if "apiport" in config else 1989
 apisrv = apiserver.ApiServer(p, apicb)
 
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, userdata, connect_flags, rc, properties):
 	print("Connected MQTT with result code "+str(rc))
 	sys.stdout.flush()
 	if rc == 0:
 		client.subscribe(MQTT_BASE_TOPIC + "/#")
 		sys.stdout.flush()
 
-def on_disconnect(client, userdata, flags, rc, props):
+def on_disconnect(client, userdata, disconnect_flags, rc, properties):
 	print("MQTT disconnected")
 
 def on_message(client, userdata, msg):
